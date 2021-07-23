@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta name="Finance Ticker" content="this is a Finance Ticker" />
+      <meta charset="utf-8">
+      <title>FinanceTicker</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="author" content="Abir Kazi">
+      <link rel="stylesheet" type="text/css" href="../style/style.css">
+      <script type="text/javascript" src="../scripts/stock.js"></script>
+      <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+   </head>
+   <body>
+      <div class="container">
+      <table id="table">
+         <thead id="table__thead">
+            <tr id="table__thead__tr">
+            </tr>
+         </thead>
+         <tbody id="table__body"></tbody>
+      </table>
+      <script>
+         var stocks = [];
+         var deltasSetArray = [];
+         $(document).ready(function() {
+           // this code gets the spanspot csv file
+           $.ajax({
+             type: "GET",
+             url: "../data/snapshot.csv",
+             dataType: "text",
+             success: function(data) {
+               processSnapshot(data);
+             }
+           });
+           // this code gets the deltas csv file
+           $.ajax({
+             type: "GET",
+             url: "../data/Deltas.csv",
+             dataType: "text",
+             success: function(data) {
+               processDeltas(data);
+             }
+           });
+         
+           function processSnapshot(allText) {
+         
+             var allTextLines = allText.split(/\r\n|\n/);
+             var headers = allTextLines[0].split(',');
+         
+             // the code-snippet below displays the headers
+             for (i = 0; i < headers.length; i++) {
+               // this creates table th elements for each of the headers
+               var x = document.createElement("th");
+               // here we are inserting the text inside the th elements we created in the line above
+               var y = document.createTextNode(headers[i]);
+               x.appendChild(y)
+               document.getElementById("table__thead__tr").appendChild(x);
+             }
+         
+             // here I am splitting the data and saving the split data array within dataArray
+             var dataArray = [];
+             for (i = 1; i < allTextLines.length; i++) {
+               var data = allTextLines[i].split(',');
+               dataArray.push(data);
+             }
+         
+             for (i = 1; i < allTextLines.length; i++) {
+               var data = allTextLines[i].split(',');
+         
+               //  new stock-object created and stored inside stocks array 
+               for (j = 0; j < data.length; j++) {
+                 var stock = new Stock();
+                 stock.name = data[0];
+                 stock.companyName = data[1];
+                 stock.price = data[2];
+                 stock.change = data[3];
+                 stock.changePct = data[4];
+                 stock.marketCap = data[5];
+                 stocks.push(stock);
+                 break;
+               }
+             }
+         
+             // below I am creating the grid for the deltas to be displayed in
+             for (i = 0; i < stocks.length; i++) {
+               var x = document.createElement("tr");
+               document.getElementById("table__body").appendChild(x);
+         
+               var tdName = document.createElement("td");
+               var tdCompanyName = document.createElement("td");
+               var tdPrice = document.createElement("td");
+               var tdChange = document.createElement("td");
+               var tdChangePct = document.createElement("td");
+               var tdMarketCap = document.createElement("td");
+         
+               x.setAttribute("id", stocks[i].name);
+               var txtTdName = document.createTextNode(stocks[i].name);
+               var txtTdCompanyName = document.createTextNode(stocks[i].companyName);
+               var txtTdPrice = document.createTextNode(stocks[i].price);
+               var txtTdChange = document.createTextNode(stocks[i].change);
+               var txtTdChangePct = document.createTextNode(stocks[i].changePct);
+               var txtTdMarketCap = document.createTextNode(stocks[i].marketCap);
+         
+               tdName.appendChild(txtTdName)
+               tdCompanyName.appendChild(txtTdCompanyName);
+               tdPrice.appendChild(txtTdPrice);
+               tdChange.appendChild(txtTdChange);
+               tdChangePct.appendChild(txtTdChangePct);
+               tdMarketCap.appendChild(txtTdMarketCap);
+         
+               x.appendChild(tdName);
+               x.appendChild(tdCompanyName);
+               x.appendChild(tdPrice);
+               x.appendChild(tdChange);
+               x.appendChild(tdChangePct);
+               x.appendChild(tdMarketCap);
+             }
+           }
+         
+           // the function below processes the deltas and the times
+           function processDeltas(allText) {
+             var allTextLines = allText.split(/\r\n|\n/);
+         
+             var times = [];
+             var timeTotal = 0;
+             for (i = 0; i < allTextLines.length; i++) {
+               var time = allTextLines[i].split(',');
+               if (time[0]) {
+                 timeTotal = timeTotal + parseInt(time[0]);
+                 times.push(time[0]);
+               }
+             }
+         
+             var deltas = [];
+             for (i = 0; i < allTextLines.length; i++) {
+               var delta = allTextLines[i].split(',');
+               if (!delta[0]) {
+                 deltas.push(delta);
+               }
+             }
+         
+             function splitDeltas(deltas, deltasSize) {
+               var index = 0;
+               var arrayLength = deltas.length;
+         
+               for (index = 0; index < arrayLength; index += deltasSize) {
+                 deltasSet = deltas.slice(index, index + deltasSize);
+                 deltasSetArray.push(deltasSet);
+               }
+         
+               return deltasSetArray;
+             }
+             // Split in group of 10 items
+             var deltasResult = splitDeltas(deltas, 10);
+         
+             // the function below calls the delay funtion, which calls the updateTable function in intervals   
+         function timeFunction() {
+            var previousTime = 0;
+             for (let i = 0; i < times.length; i++) {
+               var newTime = previousTime + parseInt(times[i]);
+               delay(newTime, i); //Set multiple timers with
+               previousTime = newTime;
+             }
+         }
+         
+         function noDelaySetInterval(func, interval) {
+            func();
+            return setInterval(func, interval);
+         }
+         
+         function startSetInterval() {
+            noDelaySetInterval(timeFunction, timeTotal);
+         }
+         
+         startSetInterval();
+         
+             function delay(i, pointerDelta) {
+               // console.log("this is i in function " + i);
+               setTimeout(function() {
+                 // console.log("this is expected delay time " + i);
+                 for (k = 0; k < 10; k++) {
+                   var currentDelta = deltasResult[pointerDelta][k];
+                   var currentStock = stocks[k];
+                   updateTable(currentStock.name, currentDelta);
+                   
+                 }
+               }, i);
+             }
+         
+             // the function below handles the updating of the deltas
+             function updateTable(stockName, delta) {
+         
+               var tableRow = document.getElementById(stockName);
+               if (tableRow) {
+                 var data = tableRow.children;
+                 if (delta[0]) {
+                   data[0].innerText = delta[0];
+                 }
+                 if (delta[1]) {
+                   data[1].innerText = delta[1];
+                 }
+                 if (delta[2]) {
+                   if(parseFloat(delta[2]) > parseFloat(data[2].innerText)){
+                     console.log("delta: " + delta[2] + " > " + parseFloat(data[2].innerText));
+                     data[2].style.backgroundColor = "green";
+                     data[3].style.backgroundColor = "green";
+                     data[4].style.backgroundColor = "green";
+                   } if(parseFloat(delta[2]) < parseFloat(data[2].innerText)){
+                     console.log("delta: " + delta[2] + " < " + parseFloat(data[2].innerText));
+                     data[2].style.backgroundColor = "red";
+                     data[3].style.backgroundColor = "red";
+                     data[4].style.backgroundColor = "red";
+                   }if(parseFloat(delta[2]) == parseFloat(data[2].innerText)){
+                     console.log("delta: " + delta[2] + " = " + parseFloat(data[2].innerText));
+                     data[2].style.backgroundColor = "orange";
+                     data[3].style.backgroundColor = "orange";
+                     data[4].style.backgroundColor = "orange";
+                   }
+                   data[2].innerText = delta[2];
+                 }
+                 if(!delta[2]){
+                   data[2].style.backgroundColor = "orange";
+                   data[3].style.backgroundColor = "orange";
+                   data[4].style.backgroundColor = "orange";
+                 }
+                 if (delta[3]) {
+                   data[3].innerText = delta[3];
+                 }
+                 if (delta[4]) {
+                   data[4].innerText = delta[4];
+                 }
+                 if (delta[5]) {
+                   data[5].innerText = delta[5];
+                 }
+               }
+             }
+           }
+         });   
+      </script>
+   </body>
+</html>
